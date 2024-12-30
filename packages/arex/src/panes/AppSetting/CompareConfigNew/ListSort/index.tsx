@@ -1,30 +1,25 @@
-import { CloseOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { CloseOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { css, useTranslation } from '@arextest/arex-core';
 import { useRequest } from 'ahooks';
 import { App, Button, Pagination, Popconfirm, Select, Tag, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/es/table';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
+import { SearchHighLight } from '@/components';
+import { CompareConfigNewProps } from '@/panes/AppSetting/CompareConfigNew';
 import { ComparisonService } from '@/services';
-import { PageQueryComparisonReq, SortNodeBase } from '@/services/ComparisonService';
+import { QuerySortSearchParams, SortNodeBase } from '@/services/ComparisonService';
 
-import AddConfigModal, {
-  AddConfigModalProps,
-  AddConfigModalRef,
-  parseDependency,
-} from '../AddConfigModal';
-import ConfigInfoTable, { CONFIG_INFO_TABLE_MODE } from '../ConfigInfoTable';
+import { AddConfigModalProps, AddConfigModalRef, parseDependency } from '../AddConfigModal';
+import ConfigInfoTable, { CONFIG_INFO_TABLE_MODE, ConfigColumnsType } from '../ConfigInfoTable';
 import { ListSortInfo } from '../type';
-import SortPathKeyInput from './SortPathKeyInput';
 
 type ListSortPrivate = {
   listPath: string;
   keys: string[];
 };
 
-export type ListSortProps = {
-  appId: string;
-} & Pick<AddConfigModalProps<ListSortPrivate>, 'operationList'>;
+export type ListSortProps = CompareConfigNewProps &
+  Pick<AddConfigModalProps<ListSortPrivate>, 'operationList'>;
 
 const PAGE_SIZE = {
   SIZE_10: 10,
@@ -49,9 +44,14 @@ export default function ListSort(props: ListSortProps) {
     pageSize: PAGE_SIZE.SIZE_10,
   });
 
-  const [searchParams, setSearchParams] = useState<
-    Pick<PageQueryComparisonReq, 'operationIds' | 'dependencyIds'>
-  >({});
+  const [searchParams, setSearchParams] = useState<QuerySortSearchParams>({});
+
+  useEffect(() => {
+    handleSearch({
+      operationName: props.operation?.operationName,
+      dependencyName: props.dependency?.operationName,
+    });
+  }, [props.operation, props.dependency, props.operationList]);
 
   const [selectedRows, setSelectedRows] = useState<ListSortInfo[]>([]);
 
@@ -104,40 +104,68 @@ export default function ListSort(props: ListSortProps) {
     },
   });
 
-  const columns: ColumnsType<ListSortInfo> = [
+  const columns: ConfigColumnsType<ListSortInfo> = [
     {
       title: t('components:appSetting.path'),
       dataIndex: 'listPath',
-      render: (path: string[]) => '/' + path.join('/'),
+      search: true,
+      render: (path: string[]) => (
+        <SearchHighLight text={'/' + path.join('/')} keyword={searchParams.keyOfListPath} />
+      ),
     },
     {
       title: t('components:appSetting.keys'),
       dataIndex: 'keys',
-      render: (keys: string[][]) => (
-        <Select
-          open={false}
-          suffixIcon={null}
-          removeIcon={null}
-          variant='borderless'
-          mode='multiple'
-          value={keys.map((key) => '/' + key.join('/'))}
-          maxTagCount={2}
-          maxTagPlaceholder={(omittedValues) => (
-            <Tooltip title={omittedValues.map(({ label }) => label).join(', ')}>
-              <span>{omittedValues.length} more...</span>
-            </Tooltip>
-          )}
-          css={css`
-            pointer-events: none; // readonly mode
-            .ant-select-selection-overflow-item-rest {
-              pointer-events: all; // enable tooltip hover event
+      search: true,
+      render: (keys: string[][]) => {
+        const maxTagCount = searchParams.keyOfValue ? undefined : 2;
+        return (
+          <Select
+            open={false}
+            suffixIcon={null}
+            removeIcon={null}
+            variant='borderless'
+            mode='multiple'
+            value={keys.map((key) => '/' + key.join('/'))}
+            maxTagCount={maxTagCount}
+            tagRender={(tag) =>
+              tag.isMaxTag ? (
+                <Tag>
+                  <Tooltip
+                    title={keys
+                      .slice(2)
+                      .map((key) => '/' + key.join('/'))
+                      .join(', ')}
+                  >
+                    {keys.length - 2} more ...
+                  </Tooltip>
+                </Tag>
+              ) : (
+                <Tag>
+                  <SearchHighLight text={tag.value} keyword={searchParams.keyOfValue} />
+                </Tag>
+              )
             }
-            .ant-select-selection-overflow-item-suffix {
-              display: none;
-            }
-          `}
-        />
-      ),
+            labelRender={(tag) => (
+              <SearchHighLight text={tag.value as string} keyword={searchParams.keyOfValue} />
+            )}
+            maxTagPlaceholder={(omittedValues) => (
+              <Tooltip title={omittedValues.map(({ label }) => label).join(', ')}>
+                <span>{omittedValues.length} more...</span>
+              </Tooltip>
+            )}
+            css={css`
+              pointer-events: none; // readonly mode
+              .ant-select-selection-overflow-item-rest {
+                pointer-events: all; // enable tooltip hover event
+              }
+              .ant-select-selection-overflow-item-suffix {
+                display: none;
+              }
+            `}
+          />
+        );
+      },
     },
   ];
 
@@ -163,13 +191,13 @@ export default function ListSort(props: ListSortProps) {
       <div>
         {tableMode === CONFIG_INFO_TABLE_MODE.DISPLAY ? (
           <>
-            <Button
-              type='text'
-              icon={<PlusOutlined />}
-              onClick={() => addConfigModalRef.current?.open()}
-            >
-              {t('common:add')}
-            </Button>
+            {/*<Button*/}
+            {/*  type='text'*/}
+            {/*  icon={<PlusOutlined />}*/}
+            {/*  onClick={() => addConfigModalRef.current?.open()}*/}
+            {/*>*/}
+            {/*  {t('common:add')}*/}
+            {/*</Button>*/}
             <Button
               type='text'
               icon={<EditOutlined />}
@@ -204,32 +232,11 @@ export default function ListSort(props: ListSortProps) {
       setPagination({ current: 1, pageSize: pagination.pageSize });
     }
 
-    const operationIds: PageQueryComparisonReq['operationIds'] = [];
-    const dependencyIds: PageQueryComparisonReq['dependencyIds'] = [];
-    const operationNameSearchLowerCase = search['operationName']?.toLowerCase() || '';
-    const dependencyNameSearchLowerCase = search['dependencyName']?.toLowerCase() || '';
-
-    if (operationNameSearchLowerCase && 'global'.includes(operationNameSearchLowerCase))
-      operationIds.push(null);
-
-    props.operationList?.forEach((operation) => {
-      if (
-        operationNameSearchLowerCase &&
-        operation.operationName.toLowerCase().includes(operationNameSearchLowerCase)
-      )
-        operationIds.push(operation.id);
-      operation.dependencyList?.forEach((dependency) => {
-        if (
-          dependencyNameSearchLowerCase &&
-          dependency.operationName?.toLowerCase()?.includes(dependencyNameSearchLowerCase)
-        )
-          dependencyIds.push(dependency.dependencyId);
-      });
-    });
-
     setSearchParams({
-      operationIds,
-      dependencyIds,
+      keyOfOperationName: search.operationName,
+      keyOfDependencyName: search.dependencyName,
+      keyOfValue: search.keys,
+      keyOfListPath: search.listPath,
     });
   }
 
@@ -274,19 +281,19 @@ export default function ListSort(props: ListSortProps) {
         onSearch={handleSearch}
       />
 
-      <AddConfigModal<ListSortPrivate>
-        ref={addConfigModalRef}
-        operationList={props.operationList}
-        appId={props.appId}
-        title={t('components:appSetting.addListSort')}
-        rules={{
-          operationId: [{ required: true }],
-        }}
-        field={({ appId, operationId, dependency }) => (
-          <SortPathKeyInput appId={appId} operationId={operationId} dependency={dependency} />
-        )}
-        onSubmit={handleAddListSort}
-      />
+      {/*<AddConfigModal<ListSortPrivate>*/}
+      {/*  ref={addConfigModalRef}*/}
+      {/*  operationList={props.operationList}*/}
+      {/*  appId={props.appId}*/}
+      {/*  title={t('components:appSetting.addListSort')}*/}
+      {/*  rules={{*/}
+      {/*    operationId: [{ required: true }],*/}
+      {/*  }}*/}
+      {/*  field={({ appId, operationId, dependency }) => (*/}
+      {/*    <SortPathKeyInput appId={appId} operationId={operationId} dependency={dependency} />*/}
+      {/*  )}*/}
+      {/*  onSubmit={handleAddListSort}*/}
+      {/*/>*/}
     </div>
   );
 }

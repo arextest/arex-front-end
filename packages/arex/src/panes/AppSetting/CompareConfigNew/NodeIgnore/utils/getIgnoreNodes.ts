@@ -7,7 +7,9 @@ import { getArrayValidElement } from '@/panes/AppSetting/CompareConfig/NodesSort
  * @param object
  * @param basePath
  */
-export function getIgnoreNodes(object: object, basePath = ''): DataNode[] {
+export function getIgnoreNodes(object?: object, basePath = ''): DataNode[] {
+  if (!object) return [];
+
   const entries = Object.entries(object);
   return entries.map(([key, value]) => {
     const losslessValue = value.isLosslessNumber ? value.value : value;

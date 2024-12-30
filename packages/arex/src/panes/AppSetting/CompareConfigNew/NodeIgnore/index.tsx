@@ -2,9 +2,10 @@ import { CloseOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-
 import { useTranslation } from '@arextest/arex-core';
 import { useRequest } from 'ahooks';
 import { App, Button, Form, Pagination, Popconfirm } from 'antd';
-import { ColumnsType } from 'antd/es/table';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
+import { SearchHighLight } from '@/components';
+import { CompareConfigNewProps } from '@/panes/AppSetting/CompareConfigNew';
 import AddConfigModal, {
   AddConfigModalProps,
   AddConfigModalRef,
@@ -12,19 +13,17 @@ import AddConfigModal, {
 } from '@/panes/AppSetting/CompareConfigNew/AddConfigModal';
 import IgnorePathInput from '@/panes/AppSetting/CompareConfigNew/NodeIgnore/IgnorePathInput';
 import { ComparisonService } from '@/services';
-import { IgnoreNodeBase, PageQueryComparisonReq } from '@/services/ComparisonService';
+import { IgnoreNodeBase, QueryIgnoreSearchParams } from '@/services/ComparisonService';
 
-import ConfigInfoTable, { CONFIG_INFO_TABLE_MODE } from '../ConfigInfoTable';
+import ConfigInfoTable, { CONFIG_INFO_TABLE_MODE, ConfigColumnsType } from '../ConfigInfoTable';
 import { ExclusionInfo } from '../type';
 
 type NodeIgnorePrivate = {
   exclusions: string;
 };
 
-export type NodeIgnoreProps = { appId: string } & Pick<
-  AddConfigModalProps<NodeIgnorePrivate>,
-  'operationList'
->;
+export type NodeIgnoreProps = CompareConfigNewProps &
+  Pick<AddConfigModalProps<NodeIgnorePrivate>, 'operationList'>;
 
 const PAGE_SIZE = {
   SIZE_10: 10,
@@ -49,17 +48,25 @@ export default function NodeIgnore(props: NodeIgnoreProps) {
     pageSize: PAGE_SIZE.SIZE_10,
   });
 
-  const [searchParams, setSearchParams] = useState<
-    Pick<PageQueryComparisonReq, 'operationIds' | 'dependencyIds'>
-  >({});
+  const [searchParams, setSearchParams] = useState<QueryIgnoreSearchParams>({});
+
+  useEffect(() => {
+    handleSearch({
+      operationName: props.operation?.operationName,
+      dependencyName: props.dependency?.operationName,
+    });
+  }, [props.operation, props.dependency, props.operationList]);
 
   const [selectedRows, setSelectedRows] = useState<ExclusionInfo[]>([]);
 
-  const columns: ColumnsType<ExclusionInfo> = [
+  const columns: ConfigColumnsType<ExclusionInfo> = [
     {
       title: t('components:appSetting.path'),
       dataIndex: 'exclusionPath',
-      render: (path: string[]) => '/' + path.join('/'),
+      search: true,
+      render: (path: string[]) => (
+        <SearchHighLight text={'/' + path.join('/')} keyword={searchParams.keyOfExclusionPath} />
+      ),
     },
   ];
 
@@ -114,32 +121,10 @@ export default function NodeIgnore(props: NodeIgnoreProps) {
       setPagination({ current: 1, pageSize: pagination.pageSize });
     }
 
-    const operationIds: PageQueryComparisonReq['operationIds'] = [];
-    const dependencyIds: PageQueryComparisonReq['dependencyIds'] = [];
-    const operationNameSearchLowerCase = search['operationName']?.toLowerCase() || '';
-    const dependencyNameSearchLowerCase = search['dependencyName']?.toLowerCase() || '';
-
-    if (operationNameSearchLowerCase && 'global'.includes(operationNameSearchLowerCase))
-      operationIds.push(null);
-
-    props.operationList?.forEach((operation) => {
-      if (
-        operationNameSearchLowerCase &&
-        operation.operationName.toLowerCase().includes(operationNameSearchLowerCase)
-      )
-        operationIds.push(operation.id);
-      operation.dependencyList?.forEach((dependency) => {
-        if (
-          dependencyNameSearchLowerCase &&
-          dependency.operationName?.toLowerCase()?.includes(dependencyNameSearchLowerCase)
-        )
-          dependencyIds.push(dependency.dependencyId);
-      });
-    });
-
     setSearchParams({
-      operationIds,
-      dependencyIds,
+      keyOfOperationName: search.operationName,
+      keyOfDependencyName: search.dependencyName,
+      keyOfExclusionPath: search.exclusionPath,
     });
   }
 
@@ -242,13 +227,13 @@ export default function NodeIgnore(props: NodeIgnoreProps) {
         title={t('components:appSetting.addNodesIgnore')}
         appId={props.appId}
         operationList={props.operationList}
-        field={({ appId, operationId, dependency }) => (
+        field={({ contract, loadingContract }) => (
           <Form.Item
             name='exclusions'
             label={t('components:appSetting.path')}
             rules={[{ required: true }]}
           >
-            <IgnorePathInput appId={appId} operationId={operationId} dependency={dependency} />
+            <IgnorePathInput contract={contract} loadingContract={loadingContract} />
           </Form.Item>
         )}
         onSubmit={handleAddIgnore}

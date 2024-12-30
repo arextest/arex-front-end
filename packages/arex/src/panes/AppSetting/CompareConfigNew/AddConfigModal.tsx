@@ -1,6 +1,7 @@
-import { useTranslation } from '@arextest/arex-core';
+import { ReloadOutlined } from '@ant-design/icons';
+import { css, useTranslation } from '@arextest/arex-core';
 import { useRequest } from 'ahooks';
-import { Form, FormInstance, Input, Modal, Select, SelectProps } from 'antd';
+import { Button, Form, FormInstance, Input, Modal, Select, SelectProps, Tooltip } from 'antd';
 import { Rule } from 'antd/es/form';
 import React, {
   FC,
@@ -13,7 +14,7 @@ import React, {
 } from 'react';
 
 import { Connector } from '@/constant';
-import { ApplicationService } from '@/services';
+import { ApplicationService, ReportService } from '@/services';
 import { DependencyData, OperationInterface } from '@/services/ApplicationService';
 import { IgnoreNodeBase } from '@/services/ComparisonService';
 
@@ -31,6 +32,8 @@ export type AddConfigModalFieldProps<T> = {
   appId: string;
   operationId?: string;
   dependency?: DependencyParams;
+  contract?: Record<string, any>;
+  loadingContract: boolean;
   form: FormInstance<CompareConfigForm<T>>;
 };
 
@@ -143,6 +146,49 @@ const AddConfigModal = forwardRef(
 
     const [dependencyOptions, setDependencyOptions] = useState<SelectProps['options']>();
 
+    const { run: handleSync, loading: syncing } = useRequest(
+      () =>
+        ReportService.syncResponseContract({
+          operationId: operationId as string,
+        }),
+      {
+        manual: true,
+        ready: !!operationId,
+        onSuccess: (data) => {
+          if (data?.dependencyList) {
+            setDependencyOptions(
+              data.dependencyList.map((dependency) => ({
+                label: dependency.operationType + '-' + dependency.operationName,
+                value: dependency.operationType + '-' + dependency.operationName,
+              })),
+            );
+            queryContract();
+          }
+        },
+      },
+    );
+
+    const {
+      data: contract,
+      loading: loadingContract,
+      mutate: setContract,
+      run: queryContract,
+    } = useRequest(
+      () =>
+        ReportService.queryContract({
+          appId: props.appId,
+          operationId,
+          ...parseDependency(dependency),
+        }),
+      {
+        ready: !!operationId,
+        refreshDeps: [props.appId, operationId, dependency],
+        onBefore() {
+          setContract();
+        },
+      },
+    );
+
     const handleOk = () =>
       props.onSubmit?.(form).then(() => {
         setOpenAddConfigModal(false);
@@ -182,14 +228,35 @@ const AddConfigModal = forwardRef(
               name='operationId'
               label={t('components:appSetting.interface')}
               rules={props.rules?.operationId}
+              style={{ width: '100%' }}
             >
-              <Select
-                allowClear
-                optionFilterProp='label'
-                placeholder={t('components:appSetting.selectInterface')}
-                popupMatchSelectWidth={false}
-                options={interfaceOptions}
-              />
+              {React.createElement((props) => (
+                <div
+                  css={css`
+                    display: flex;
+                  `}
+                >
+                  <Select
+                    {...props}
+                    allowClear
+                    showSearch
+                    optionFilterProp='label'
+                    placeholder={t('components:appSetting.selectInterface')}
+                    popupMatchSelectWidth={false}
+                    options={interfaceOptions}
+                  />
+
+                  <Tooltip title={t('components:appSetting.sync')}>
+                    <Button
+                      icon={<ReloadOutlined />}
+                      disabled={!operationId}
+                      loading={syncing}
+                      onClick={handleSync}
+                      style={{ marginLeft: '8px' }}
+                    />
+                  </Tooltip>
+                </div>
+              ))}
             </Form.Item>
           )}
 
@@ -201,6 +268,7 @@ const AddConfigModal = forwardRef(
             >
               <Select
                 allowClear
+                showSearch
                 optionFilterProp='label'
                 placeholder={t('components:appSetting.selectDependency')}
                 popupMatchSelectWidth={false}
@@ -214,6 +282,8 @@ const AddConfigModal = forwardRef(
               appId: props.appId,
               operationId,
               dependency: parseDependency(dependency),
+              contract,
+              loadingContract,
               form,
             }))()}
         </Form>

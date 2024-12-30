@@ -9,6 +9,7 @@ import React, { Key, ReactNode, useRef } from 'react';
 import { useImmer } from 'use-immer';
 
 import { SearchHighLight } from '@/components';
+import { getValueByPath, setValueByPath } from '@/utils';
 
 import { ComparisonConfigInfo, ExpirationType } from './type';
 
@@ -17,10 +18,17 @@ export enum CONFIG_INFO_TABLE_MODE {
   EDIT,
 }
 
+export type ConfigColumnsType<T> = (Omit<ColumnType<T>, 'dataIndex'> & {
+  dataIndex?: string | string[];
+  search?: boolean;
+  renderFallback?: ReactNode | ((record: T) => ReactNode);
+})[];
+
 export interface ConfigInfoTableProps<T> extends TableProps<T> {
   builtInColumns?: Partial<Record<keyof T, ColumnsType<T>[number]>>;
   requestSearch?: boolean;
-  onSearch?: (search: Record<string, string | undefined>) => void;
+  onSearch?: (search: Record<string, any>) => void;
+  columns?: ConfigColumnsType<T>;
 }
 
 export default function ConfigInfoTable<T extends ComparisonConfigInfo>(
@@ -37,24 +45,24 @@ export default function ConfigInfoTable<T extends ComparisonConfigInfo>(
   const handleSearch = (
     selectedKeys: string[],
     confirm: (param?: FilterConfirmProps) => void,
-    dataIndex: string,
+    dataIndex: string | string[],
   ) => {
     const searchValue = selectedKeys[0];
 
     setSearch((draft) => {
       if (!draft) {
-        return { [dataIndex]: searchValue };
+        return setValueByPath({}, dataIndex, searchValue);
       } else {
-        draft[dataIndex] = searchValue;
+        return setValueByPath(draft, dataIndex, searchValue);
       }
     });
     !props.requestSearch && confirm();
-    search && props.onSearch?.({ ...search, [dataIndex]: searchValue });
+    props.onSearch?.({ ...search, ...setValueByPath({}, dataIndex, searchValue) });
   };
 
   // 获取列搜索配置
   const getColumnSearchProps = (
-    dataIndex: keyof T,
+    dataIndex: string | string[],
     fallback?: ReactNode | ((record: T) => ReactNode),
   ): ColumnType<T> => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
@@ -66,7 +74,7 @@ export default function ConfigInfoTable<T extends ComparisonConfigInfo>(
           placeholder={`Search ${dataIndex.toString()}`}
           value={selectedKeys[0]}
           onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-          onPressEnter={() => handleSearch(selectedKeys as string[], confirm, dataIndex.toString())}
+          onPressEnter={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
           style={{ width: '160px' }}
         />
 
@@ -79,10 +87,10 @@ export default function ConfigInfoTable<T extends ComparisonConfigInfo>(
                 if (!draft) {
                   return {};
                 } else {
-                  draft[dataIndex as string] = '';
+                  setValueByPath(draft, dataIndex, '');
                 }
               });
-              handleSearch([''], confirm, dataIndex.toString());
+              handleSearch([''], confirm, dataIndex);
             }}
           >
             {t('common:reset')}
@@ -90,7 +98,7 @@ export default function ConfigInfoTable<T extends ComparisonConfigInfo>(
           <Button
             size='small'
             type='primary'
-            onClick={() => handleSearch(selectedKeys as string[], confirm, dataIndex.toString())}
+            onClick={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
             icon={<SearchOutlined />}
           >
             {t('common:search')}
@@ -105,20 +113,23 @@ export default function ConfigInfoTable<T extends ComparisonConfigInfo>(
         }}
       />
     ),
-    onFilter: (value: boolean | Key, record: T) =>
-      record[dataIndex]
-        ? String(record[dataIndex])?.toLowerCase().includes(value.toString().toLowerCase())
-        : false,
+    onFilter: (value: boolean | Key, record: T) => {
+      const data = getValueByPath(record, dataIndex);
+
+      return data ? data?.toLowerCase().includes(value.toString().toLowerCase()) : false;
+    },
     onFilterDropdownOpenChange: (open: boolean) => {
       open && setTimeout(() => searchInput.current?.focus(), 100);
     },
-    render: (text: string | null, record) => {
-      const columnsSearchValue = search?.[dataIndex as string];
+    render: (_: string | null, record) => {
+      const text = getValueByPath(record, dataIndex);
+      const columnsSearchValue = getValueByPath(search, dataIndex);
+
       if (
         !!columnsSearchValue &&
         text?.toLowerCase().includes(columnsSearchValue.toLowerCase() || '')
       ) {
-        return <SearchHighLight text={text} keyword={search[dataIndex as string]} />;
+        return <SearchHighLight text={text} keyword={columnsSearchValue} />;
       } else {
         return (
           text ||
@@ -153,7 +164,13 @@ export default function ConfigInfoTable<T extends ComparisonConfigInfo>(
       )),
       ...props.builtInColumns?.dependencyName,
     },
-    ...(configColumns || []),
+    ...(configColumns?.map(({ search, ...column }) => ({
+      // TODO
+      ...(search && column.dataIndex
+        ? getColumnSearchProps(column.dataIndex, column.renderFallback)
+        : undefined),
+      ...column,
+    })) || []),
     {
       title: t('components:appSetting.expireOn'),
       dataIndex: 'expirationDate',
@@ -170,7 +187,11 @@ export default function ConfigInfoTable<T extends ComparisonConfigInfo>(
   ];
 
   return (
-    <Card>
+    <Card
+      style={{
+        borderRadius: '0 0 8px 8px',
+      }}
+    >
       <Table<T> pagination={false} {...tableProps} columns={columns} />
     </Card>
   );

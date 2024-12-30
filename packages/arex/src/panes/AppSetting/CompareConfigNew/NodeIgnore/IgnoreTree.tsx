@@ -8,7 +8,7 @@ import { getIgnoreNodes } from './utils';
 type IgnoreTreeProps = Omit<TreeProps, 'treeData'> & {
   title?: React.ReactNode;
   loading?: boolean;
-  treeData: object;
+  treeData?: Record<string, any>;
   lineThrough?: boolean;
 };
 
@@ -27,7 +27,7 @@ const IgnoreTree: FC<IgnoreTreeProps> = (props) => {
       <Card size='small' title={props.title}>
         <EmptyWrapper
           loading={props.loading}
-          empty={!Object.keys(props.treeData).length}
+          empty={!Object.keys(props.treeData || {}).length}
           description={t('appSetting.emptyContractTip')}
         >
           <Tree multiple defaultExpandAll height={800} {...props} treeData={treeData} />

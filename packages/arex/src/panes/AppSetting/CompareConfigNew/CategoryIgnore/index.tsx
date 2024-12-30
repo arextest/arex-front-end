@@ -1,10 +1,10 @@
 import { CloseOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { useTranslation } from '@arextest/arex-core';
 import { useRequest } from 'ahooks';
-import { App, Button, Pagination, Popconfirm } from 'antd';
-import { ColumnsType } from 'antd/es/table';
-import React, { FC, useRef, useState } from 'react';
+import { App, Button, Pagination, Popconfirm, Typography } from 'antd';
+import React, { FC, useEffect, useRef, useState } from 'react';
 
+import { CompareConfigNewProps } from '@/panes/AppSetting/CompareConfigNew';
 import AddConfigModal, {
   AddConfigModalProps,
   AddConfigModalRef,
@@ -12,14 +12,14 @@ import AddConfigModal, {
 import DependencyInput from '@/panes/AppSetting/CompareConfigNew/CategoryIgnore/DependencyInput';
 import ConfigInfoTable, {
   CONFIG_INFO_TABLE_MODE,
+  ConfigColumnsType,
 } from '@/panes/AppSetting/CompareConfigNew/ConfigInfoTable';
 import { IgnoreCategoryInfo } from '@/panes/AppSetting/CompareConfigNew/type';
 import { ComparisonService } from '@/services';
-import { IgnoreCategory, PageQueryComparisonReq } from '@/services/ComparisonService';
+import { IgnoreCategory, QueryIgnoreCategorySearchParams } from '@/services/ComparisonService';
 
-export type CategoryIgnoreProps = {
-  appId: string;
-} & Pick<AddConfigModalProps<IgnoreCategory>, 'operationList'>;
+export type CategoryIgnoreProps = CompareConfigNewProps &
+  Pick<AddConfigModalProps<IgnoreCategory>, 'operationList'>;
 
 const PAGE_SIZE = {
   SIZE_10: 10,
@@ -44,9 +44,14 @@ const CategoryIgnore: FC<CategoryIgnoreProps> = (props) => {
     pageSize: PAGE_SIZE.SIZE_10,
   });
 
-  const [searchParams, setSearchParams] = useState<
-    Pick<PageQueryComparisonReq, 'operationIds' | 'dependencyIds'>
-  >({});
+  const [searchParams, setSearchParams] = useState<QueryIgnoreCategorySearchParams>({});
+
+  useEffect(() => {
+    handleSearch({
+      operationName: props.operation?.operationName,
+      dependencyName: props.dependency?.operationName,
+    });
+  }, [props.operation, props.dependency, props.operationList]);
 
   const addConfigModalRef = useRef<AddConfigModalRef>(null);
 
@@ -88,49 +93,29 @@ const CategoryIgnore: FC<CategoryIgnoreProps> = (props) => {
     },
   });
 
-  const columns: ColumnsType<IgnoreCategoryInfo> = [
+  const columns: ConfigColumnsType<IgnoreCategoryInfo> = [
     {
       title: t('appSetting.categoryType', { ns: 'components' }),
       dataIndex: ['ignoreCategoryDetail', 'operationType'],
+      search: true,
     },
     {
       title: t('appSetting.operationName', { ns: 'components' }),
       dataIndex: ['ignoreCategoryDetail', 'operationName'],
-      render: (text: string) => text || '*',
+      search: true,
+      renderFallback: <Typography.Text type='secondary'>-</Typography.Text>,
     },
   ];
 
-  function handleSearch(search: Record<string, string | undefined>) {
+  function handleSearch(search: Record<string, any>) {
     if (pagination.current !== 1) {
       setPagination({ current: 1, pageSize: pagination.pageSize });
     }
 
-    const operationIds: PageQueryComparisonReq['operationIds'] = [];
-    const dependencyIds: PageQueryComparisonReq['dependencyIds'] = [];
-    const operationNameSearchLowerCase = search['operationName']?.toLowerCase() || '';
-    const dependencyNameSearchLowerCase = search['dependencyName']?.toLowerCase() || '';
-
-    if (operationNameSearchLowerCase && 'global'.includes(operationNameSearchLowerCase))
-      operationIds.push(null);
-
-    props.operationList?.forEach((operation) => {
-      if (
-        operationNameSearchLowerCase &&
-        operation.operationName.toLowerCase().includes(operationNameSearchLowerCase)
-      )
-        operationIds.push(operation.id);
-      operation.dependencyList?.forEach((dependency) => {
-        if (
-          dependencyNameSearchLowerCase &&
-          dependency.operationName?.toLowerCase()?.includes(dependencyNameSearchLowerCase)
-        )
-          dependencyIds.push(dependency.dependencyId);
-      });
-    });
-
     setSearchParams({
-      operationIds,
-      dependencyIds,
+      keyOfOperationName: search.operationName,
+      keyOfIgnoreOperationType: search.ignoreCategoryDetail?.operationType,
+      keyOfIgnoreOperationName: search.ignoreCategoryDetail?.operationName,
     });
   }
 

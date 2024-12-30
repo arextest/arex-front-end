@@ -22,45 +22,18 @@ const IgnoreTreeWrapper = styled.div<{ lineThrough?: boolean }>`
 `;
 
 export type ExclusionPathInputProps = Omit<InputProps, 'onChange'> & {
-  appId: string;
-  operationId?: string;
-  dependency?: DependencyParams;
+  contract?: Record<string, any>;
   onChange?: (value: string) => void;
+  loadingContract?: boolean;
 };
 
 const IgnorePathInput = (props: ExclusionPathInputProps) => {
-  const { appId, operationId, dependency, ...inputProps } = props;
+  const { contract, loadingContract, ...inputProps } = props;
   const { t } = useTranslation();
 
   const [expand, setExpand] = useState(false);
 
   const [selectedKeys, setSelectedKeys] = useState<React.Key[]>();
-
-  const {
-    data: contract,
-    mutate: setContract,
-    loading: loadingContract,
-  } = useRequest(
-    () =>
-      ReportService.queryContract({
-        appId,
-        operationId,
-        ...dependency,
-      }),
-    {
-      ready: !!appId && expand,
-      refreshDeps: [appId, operationId, dependency],
-      onBefore() {
-        setContract();
-      },
-    },
-  );
-
-  const contractParsed = useMemo<{ [key: string]: any }>(() => {
-    const res = contract?.contract;
-    if (res) return tryParseJsonString(res) || {};
-    else return {};
-  }, [contract]);
 
   return (
     <IgnoreTreeWrapper lineThrough>
@@ -75,8 +48,8 @@ const IgnorePathInput = (props: ExclusionPathInputProps) => {
         <TooltipButton
           type='default'
           size='middle'
-          title={<Typography.Text>{'select from tree'}</Typography.Text>}
-          icon={<DownOutlined />}
+          title={t('components:appSetting.selectNodePath')}
+          icon={<DownOutlined style={{ width: '10px' }} />}
           textProps={{ style: { height: '10px' } }}
           onClick={() => setExpand(!expand)}
         />
@@ -100,13 +73,13 @@ const IgnorePathInput = (props: ExclusionPathInputProps) => {
             children: (
               <IgnoreTree
                 multiple={false}
-                loading={loadingContract}
+                loading={props.loadingContract}
                 selectedKeys={selectedKeys}
                 onSelect={(keys) => {
                   setSelectedKeys(keys);
                   props.onChange?.(keys.join('/'));
                 }}
-                treeData={contractParsed}
+                treeData={contract}
               />
             ),
           },

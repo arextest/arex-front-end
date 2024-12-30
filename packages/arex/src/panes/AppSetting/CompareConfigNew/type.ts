@@ -1,5 +1,11 @@
 import { IgnoreCategory } from '@/services/ComparisonService';
 
+export enum CONFIG_TARGET {
+  GLOBAL,
+  INTERFACE,
+  DEPENDENCY,
+}
+
 export enum ExpirationType {
   PINNED_NEVER_EXPIRED,
   SOFT_TIME_EXPIRED,

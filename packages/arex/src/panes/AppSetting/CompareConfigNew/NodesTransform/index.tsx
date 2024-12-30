@@ -1,22 +1,25 @@
-import { CloseOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { CloseOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { useTranslation } from '@arextest/arex-core';
 import { useRequest } from 'ahooks';
-import { App, Button, Form, Pagination, Popconfirm } from 'antd';
-import { ColumnsType } from 'antd/es/table';
-import React, { useRef, useState } from 'react';
+import { App, Button, Pagination, Popconfirm } from 'antd';
+import React, { useEffect, useRef, useState } from 'react';
 
-import AddConfigModal, {
+import { CompareConfigNewProps } from '@/panes/AppSetting/CompareConfigNew';
+import {
   AddConfigModalProps,
   AddConfigModalRef,
   parseDependency,
 } from '@/panes/AppSetting/CompareConfigNew/AddConfigModal';
 import ConfigInfoTable, {
   CONFIG_INFO_TABLE_MODE,
+  ConfigColumnsType,
 } from '@/panes/AppSetting/CompareConfigNew/ConfigInfoTable';
-import RootTransformInput from '@/panes/AppSetting/CompareConfigNew/NodesTransform/RootTransformInput';
 import { RootTransformInfo } from '@/panes/AppSetting/CompareConfigNew/type';
 import { ComparisonService } from '@/services';
-import { PageQueryComparisonReq, UpdateTransformRootNodeReq } from '@/services/ComparisonService';
+import {
+  QueryRootTransformSearchParams,
+  UpdateTransformRootNodeReq,
+} from '@/services/ComparisonService';
 
 const PAGE_SIZE = {
   SIZE_10: 10,
@@ -26,9 +29,8 @@ const PAGE_SIZE = {
 
 const pageSizeOptions = Object.values(PAGE_SIZE);
 
-export type NodeTransformProps = {
-  appId: string;
-} & Pick<AddConfigModalProps<RootTransformInfo>, 'operationList'>;
+export type NodeTransformProps = CompareConfigNewProps &
+  Pick<AddConfigModalProps<RootTransformInfo>, 'operationList'>;
 
 const NodesTransform = (props: NodeTransformProps) => {
   const { t } = useTranslation();
@@ -47,9 +49,14 @@ const NodesTransform = (props: NodeTransformProps) => {
     pageSize: PAGE_SIZE.SIZE_10,
   });
 
-  const [searchParams, setSearchParams] = useState<
-    Pick<PageQueryComparisonReq, 'operationIds' | 'dependencyIds'>
-  >({});
+  const [searchParams, setSearchParams] = useState<QueryRootTransformSearchParams>({});
+
+  useEffect(() => {
+    handleSearch({
+      operationName: props.operation?.operationName,
+      dependencyName: props.dependency?.operationName,
+    });
+  }, [props.operation, props.dependency, props.operationList]);
 
   const {
     data = { rootTransformInfos: [], totalCount: 0 },
@@ -89,10 +96,11 @@ const NodesTransform = (props: NodeTransformProps) => {
     },
   });
 
-  const columns: ColumnsType<RootTransformInfo> = [
+  const columns: ConfigColumnsType<RootTransformInfo> = [
     {
       dataIndex: 'transformMethodName',
       title: t('components:appSetting.transformMethodName'),
+      search: true,
     },
   ];
 
@@ -118,13 +126,13 @@ const NodesTransform = (props: NodeTransformProps) => {
       <div>
         {tableMode === CONFIG_INFO_TABLE_MODE.DISPLAY ? (
           <>
-            <Button
-              type='text'
-              icon={<PlusOutlined />}
-              onClick={() => addConfigModalRef.current?.open()}
-            >
-              {t('common:add')}
-            </Button>
+            {/*<Button*/}
+            {/*  type='text'*/}
+            {/*  icon={<PlusOutlined />}*/}
+            {/*  onClick={() => addConfigModalRef.current?.open()}*/}
+            {/*>*/}
+            {/*  {t('common:add')}*/}
+            {/*</Button>*/}
             <Button
               type='text'
               icon={<EditOutlined />}
@@ -168,32 +176,10 @@ const NodesTransform = (props: NodeTransformProps) => {
       setPagination({ current: 1, pageSize: pagination.pageSize });
     }
 
-    const operationIds: PageQueryComparisonReq['operationIds'] = [];
-    const dependencyIds: PageQueryComparisonReq['dependencyIds'] = [];
-    const operationNameSearchLowerCase = search['operationName']?.toLowerCase() || '';
-    const dependencyNameSearchLowerCase = search['dependencyName']?.toLowerCase() || '';
-
-    // if (operationNameSearchLowerCase && 'global'.includes(operationNameSearchLowerCase))
-    //   operationIds.push(null);
-
-    props.operationList?.forEach((operation) => {
-      if (
-        operationNameSearchLowerCase &&
-        operation.operationName.toLowerCase().includes(operationNameSearchLowerCase)
-      )
-        operationIds.push(operation.id);
-      operation.dependencyList?.forEach((dependency) => {
-        if (
-          dependencyNameSearchLowerCase &&
-          dependency.operationName?.toLowerCase()?.includes(dependencyNameSearchLowerCase)
-        )
-          dependencyIds.push(dependency.dependencyId);
-      });
-    });
-
     setSearchParams({
-      operationIds,
-      dependencyIds,
+      keyOfOperationName: search.operationName,
+      keyOfDependencyName: search.dependencyName,
+      keyOfMethodName: search.transformMethodName,
     });
   }
 
@@ -224,33 +210,33 @@ const NodesTransform = (props: NodeTransformProps) => {
         onSearch={handleSearch}
       />
 
-      <AddConfigModal<RootTransformInfo>
-        ref={addConfigModalRef}
-        title={t('components:appSetting.addTransformNode')}
-        appId={props.appId}
-        operationList={props.operationList}
-        rules={{
-          operationId: [
-            {
-              required: true,
-            },
-          ],
-        }}
-        field={(fieldProps) => (
-          <Form.Item
-            name='transformMethodName'
-            label={t('components:appSetting.transformedNode')}
-            rules={[
-              {
-                required: true,
-              },
-            ]}
-          >
-            <RootTransformInput appId={fieldProps.appId} />
-          </Form.Item>
-        )}
-        onSubmit={handleSubmit}
-      />
+      {/*<AddConfigModal<RootTransformInfo>*/}
+      {/*  ref={addConfigModalRef}*/}
+      {/*  title={t('components:appSetting.addTransformNode')}*/}
+      {/*  appId={props.appId}*/}
+      {/*  operationList={props.operationList}*/}
+      {/*  rules={{*/}
+      {/*    operationId: [*/}
+      {/*      {*/}
+      {/*        required: true,*/}
+      {/*      },*/}
+      {/*    ],*/}
+      {/*  }}*/}
+      {/*  field={(fieldProps) => (*/}
+      {/*    <Form.Item*/}
+      {/*      name='transformMethodName'*/}
+      {/*      label={t('components:appSetting.transformedNode')}*/}
+      {/*      rules={[*/}
+      {/*        {*/}
+      {/*          required: true,*/}
+      {/*        },*/}
+      {/*      ]}*/}
+      {/*    >*/}
+      {/*      <RootTransformInput appId={fieldProps.appId} />*/}
+      {/*    </Form.Item>*/}
+      {/*  )}*/}
+      {/*  onSubmit={handleSubmit}*/}
+      {/*/>*/}
     </>
   );
 };
