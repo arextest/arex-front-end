@@ -35,6 +35,9 @@ const MenuList = styled(Menu, {
 }>`
   border: none !important;
   background: transparent !important;
+  .ant-menu-title-content {
+    width: 100%;
+  }
   .ant-menu-item {
     color: ${(props) => props.theme.colorTextSecondary}!important;
     padding-left: 8px;

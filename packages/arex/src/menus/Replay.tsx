@@ -70,8 +70,8 @@ const MenuItem = styled((props: MenuItemProps) => {
     </SpaceBetweenWrapper>
   );
 })`
+  width: 100%;
   .menu-item-heart {
-    padding-right: 8px;
     .menu-item-heart-outlined {
       opacity: 0;
       transition: opacity ease 0.3s;

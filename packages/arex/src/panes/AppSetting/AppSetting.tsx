@@ -5,7 +5,7 @@ import {
   setLocalStorage,
   useTranslation,
 } from '@arextest/arex-core';
-import { Tabs } from 'antd';
+import { Badge, Tabs } from 'antd';
 import React, { useEffect, useMemo } from 'react';
 
 import { APP_ID_KEY, PanesType } from '@/constant';
@@ -14,6 +14,7 @@ import CompareConfig from '@/panes/AppSetting/CompareConfig';
 import { useMenusPanes } from '@/store';
 import { decodePaneKey } from '@/store/useMenusPanes';
 
+import CompareConfigNew from './CompareConfigNew';
 import SettingImportYaml from './ImportYaml';
 import SettingOther from './Other';
 import SettingRecord from './Record';
@@ -42,6 +43,15 @@ const AppSetting: ArexPaneFC<{ key: string }> = (props) => {
         key: 'compareConfig',
         label: t('appSetting.compareConfig'),
         children: <CompareConfig appId={appId} />,
+      },
+      {
+        key: 'compareConfigNew',
+        label: (
+          <Badge size='small' count='new' offset={[12, 0]}>
+            {t('appSetting.compareConfig')}
+          </Badge>
+        ),
+        children: <CompareConfigNew appId={appId} />,
       },
       {
         key: 'importYaml',

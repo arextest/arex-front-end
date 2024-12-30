@@ -1,0 +1,78 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`convert sort tree > complex object 1`] = `
+[
+  {
+    "key": "name/",
+    "title": "name",
+    "value": "Helen",
+  },
+  {
+    "key": "age/",
+    "title": "age",
+    "value": 20,
+  },
+  {
+    "key": "hobby/",
+    "title": "hobby",
+    "value": [
+      "music",
+      "football",
+    ],
+  },
+  {
+    "children": [
+      {
+        "key": "assets/house/",
+        "title": "house",
+        "value": "shanghai",
+      },
+      {
+        "key": "assets/car/",
+        "title": "car",
+        "value": [
+          "BMW",
+          "Benz",
+        ],
+      },
+      {
+        "key": "assets/savings/",
+        "title": "savings",
+        "value": 1000000,
+      },
+    ],
+    "key": "assets/",
+    "title": "assets",
+  },
+]
+`;
+
+exports[`convert sort tree > lossless json string 1`] = `
+[
+  {
+    "key": "name/",
+    "title": "name",
+    "value": "Helen",
+  },
+  {
+    "key": "age/",
+    "title": "age",
+    "value": "20.00000000",
+  },
+]
+`;
+
+exports[`convert sort tree > simple object 1`] = `
+[
+  {
+    "key": "name/",
+    "title": "name",
+    "value": "Helen",
+  },
+  {
+    "key": "age/",
+    "title": "age",
+    "value": 20,
+  },
+]
+`;

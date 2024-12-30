@@ -5,6 +5,7 @@ export type IgnoreCategory = {
   operationType: string;
   operationName?: string;
 };
+
 export interface InsertIgnoreCategoryReq extends QueryNodeReq<'Interface'> {
   ignoreCategoryDetail: IgnoreCategory;
 }

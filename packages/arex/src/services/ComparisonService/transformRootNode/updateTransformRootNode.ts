@@ -3,7 +3,9 @@ import { request } from '@/utils';
 
 import { TransformRootNodeParams } from './queryTransformRootNode';
 
-interface UpdateTransformRootNodeReq extends QueryNodeReq<'Global'>, TransformRootNodeParams {}
+export interface UpdateTransformRootNodeReq
+  extends QueryNodeReq<'Global'>,
+    TransformRootNodeParams {}
 
 export async function updateTransformRootNode(params: UpdateTransformRootNodeReq) {
   const res = await request.post<boolean>(

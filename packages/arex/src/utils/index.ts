@@ -113,3 +113,40 @@ export function download(content: string, filename: string) {
   // a标签从body移除
   document.body.removeChild(eleLink);
 }
+
+/**
+ * 根据路径获取对象的值
+ * @param obj
+ * @param path
+ */
+export function getValueByPath(obj: object | undefined, path: string | string[]): any {
+  if (typeof path === 'string') {
+    path = path.split('.');
+  }
+  return path.reduce<Record<string, any>>((o, k) => (o || {})[k], obj || {});
+}
+
+/**
+ * 根据路径设置对象的值
+ * @param obj
+ * @param path
+ * @param value
+ */
+export function setValueByPath(obj: object, path: string | string[], value: any) {
+  // path 如果是 string 则直接赋值；如果是数组则遍历赋值，如果不存在则创建
+  if (typeof path === 'string') {
+    path = path.split('.');
+  }
+  path.reduce<Record<string, any>>((o, k, i) => {
+    if (i === path.length - 1) {
+      o[k] = value;
+    } else {
+      if (typeof o[k] === 'undefined') {
+        o[k] = {};
+      }
+    }
+    return o[k];
+  }, obj);
+
+  return obj;
+}
